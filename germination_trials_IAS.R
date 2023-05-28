@@ -24,54 +24,28 @@ library(gridExtra)
 
 
 #load datasets----
-# contains dataset contains data on the number and identity of germinated seedlings 
-#detailed germination data: the file contains the following variables:
-    #plot_ID: random number assigned to identify each plot (numbers from 1-48)
-    #plot: plot name as in the field experiment
-    #species: species ID for seedlings
-    #date: date when observation was recorded
-    #comments: any comments or remarks
-germination <- read_excel("germination_trials_AK.xlsx", sheet= "seedlings") %>%
-                  #make sure date is understood as a date
-                  mutate(day=as.Date(dmy(date)),
-                         #make sure the species names are the same as for aboveground assessments
-                         species=case_when(species == "RUMACE" ~ "RUMACETOSELLA",
-                                           species == "RUMOSA" ~ "RUMACETOSA",
-                                           species == "unidentified" ~ "UNID",
-                                           TRUE ~ species))
-
-write_excel_csv(germination, file = "germination_trials.csv", col_names=TRUE)
-# germination <- read_csv("germination_trials.csv")
+# detailed germination data: the file contains the following variables:
+    # plot_ID: random number assigned to identify each plot (numbers from 1-48)
+    # plot: plot name as in the field experiment
+    # species: species ID for seedlings
+    # date: date when observation was recorded
+    # comments: any comments or remarks
+germination <- read_csv("germination_trials.csv")
 
 #sp.names: the file contains the following variables:
-    #species: code for the species used in germination trials and aboveground assessments
-    #sp_name: species name
-    #life_form: perennial or annual (all perennials)
-sp.names <- read_excel("germination_trials_AK.xlsx", sheet= "species.codes") 
-write_excel_csv(sp.names, file = "species_names.csv", col_names=TRUE)
-
-# sp.names <- read_csv("species_names.csv")
+    # species: code for the species used in germination trials and aboveground assessments
+    # sp_name: species name
+    # life_form: perennial or annual (all perennials)
+sp.names <- read_csv("species_names.csv")
 
 #plot.info: the file contains the following variables:
-    #plot_ID: random number assigned to identify each plot (numbers from 1-48)
-    #plot: plot name as in the field experiment
-    #pair: plot pair (using NutNet codes for plots: AH1C, AH1NPK, AH2C…)
-    #location	study location (Audkuluheidi or Theistareykir)
-    #habitat	habitat type (H: heath or M: melur)
-    #treatment	experimental treatment (F: fenced, grazing excluded; C: control, open to grazing)
-plot.info <- read_excel("germination_trials_AK.xlsx", sheet= "plot.info") %>% 
-                  #add full names for the habitats and treatments
-                  #add variable for combined site_habitat
-                  mutate(habitat=case_when(habitat == "M" ~ "melur",
-                                           habitat == "H" ~ "heath"),
-                         treatment=case_when(treatment == "C" ~ "control",
-                                             treatment == "F" ~ "fenced"),
-                         site.hab = paste(location, habitat, sep="_"),
-                         site.hab.ttm = paste(location, habitat, treatment, sep="_")) %>% 
-                  arrange(plot)
-
-write_excel_csv(plot.info, file = "plot_info.csv", col_names=TRUE)
-# plot.info <- read_csv("plot_info.csv")
+    # plot_ID: random number assigned to identify each plot (numbers from 1-48)
+    # plot: plot name as in the field experiment
+    # pair: plot pair (using NutNet codes for plots: AH1C, AH1NPK, AH2C…)
+    # location	study location (Audkuluheidi or Theistareykir)
+    # habitat	habitat type (H: heath or M: melur)
+    # treatment	experimental treatment (F: fenced, grazing excluded; C: control, open to grazing)
+plot.info <- read_csv("plot_info.csv")
 
 #plot codes (point intercept data uses the original coding for the plots, but we used the NutNet code)
 setwd("C:/Users/isabel/OneDrive - Menntaský/ISABEL/FENCES/vegetation")
@@ -80,31 +54,13 @@ plot.codes <- read_excel("codes_plots.xlsx", sheet= "conversion_codes") %>%
                                         TRUE~NutNet),
                        plot=FENCES, plot.NutNet=NutNet) #make sure we have the same column names to merge datasets later
 
-#point intercept data for 2021 (point intercept frames in rows, species in columns)
-setwd("C:/Users/isabel/OneDrive - Menntaský/ISABEL/FENCES/vegetation")
-pi.data <- read_excel("point_frame_intercept_Fence_Audkuluheidi_Theistareykir_2021.xlsx", sheet= "data_original") %>%  
-                   #fix some typing issues
-                   mutate(SAXCES=SAXCEP, LOIPRO=LOUPRO, SILUNI=SILMAR,
-                          plot=case_when(plot == "TMOC" ~ "TM0C",
-                                         TRUE ~ as.character(plot))) %>% 
-                   #get the plot names for the NutNet plots
-                   left_join(plot.codes, by="plot") %>%
-                      select(-plot) %>% mutate(plot=plot.NutNet) %>% #keep only plot names from NutNet
-                   #keep only vascular species; check with Inga: SANSP
-                   select(plot, site, habitat, ttm, sitehabitat, pointframe, THYARC:POAALP, FESRIC:MINUARTIASP, SILUNI, 
-                          LUZSPI:AGRVIN, MINRUB, DRANOR, TRISPI, SAXCES, THAALP, JUNTRI, CARBIG, DRYOCT, BETNAN, VACULI:EQUVAR, 
-                          EQUARV, KOBMYO, AGRCAP, SALLAN, CARRUP, AGRSTO:POAPRA, SALHER, TOFPUS, HARHYP, PINVUL, BARALP, 
-                          SALARC, CERFON, CERALPSSPGLA, ALCALP, POASP, ANTALP, FESRUB, DESFLE, ANTODO, LOIPRO, RANACR, CALVUL, 
-                          GALVER, COEVIR, PARPAL, PLATHYP, VACMYR, ERIBOR, HIERACIUM, OMASUP, CARVAG, SALPHY) %>% 
-                   group_by(plot) %>% select(-plot, -site, -habitat, -ttm, -sitehabitat, - pointframe) %>% 
-                   summarise_all(sum) %>% 
-                   #keep plot ID as row names
+# point intercept data for aboveground vegetation assessed in summer 2021 
+# on 4 permanent marked subplots (50 x 50 cm) with 25 pins each 
+# (point intercept frames in rows, species in columns)
+# data for vascular species only used here
+pi.data <- read_csv("point_intercept_data.csv") %>% 
+                   # keep plot ID as row names
                    column_to_rownames("plot")
-
-setwd("C:/Users/isabel/OneDrive - Menntaský/ISABEL/students/Abdubakir")
-
-write_excel_csv(pi.data, file = "point_intercept_data.csv", col_names=TRUE)
-# pi.data <- read_csv("point_intercept_data.csv")
 
 
 #customised functions----
